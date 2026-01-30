@@ -1,6 +1,8 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Project } from "@/types/project";
 import type { Milestone, MilestoneProof } from "@/app/components/MilestoneStepper";
+import { apiRequest } from "@/lib/api";
+import { useAuth } from "./AuthContext";
 
 export interface InvestorMetrics {
   totalInvested?: number;
@@ -212,12 +214,12 @@ interface InvestorDataContextValue {
   data: PlatformData;
   updateData: (partial: Partial<PlatformData>) => void;
   resetData: () => void;
-  recordInvestment: (payload: RecordInvestmentPayload) => InvestmentCertificate | null;
-  submitProject: (input: ProjectSubmissionInput) => ProjectSubmission;
-  approveProject: (submissionId: string) => void;
-  rejectProject: (submissionId: string, reason?: string) => void;
-  submitMilestoneProof: (payload: SubmitMilestoneProofPayload) => void;
-  reviewMilestoneProof: (payload: ReviewMilestoneProofPayload) => void;
+  recordInvestment: (payload: RecordInvestmentPayload) => Promise<InvestmentCertificate | null>;
+  submitProject: (input: ProjectSubmissionInput) => Promise<ProjectSubmission>;
+  approveProject: (submissionId: string) => Promise<void>;
+  rejectProject: (submissionId: string, reason?: string) => Promise<void>;
+  submitMilestoneProof: (payload: SubmitMilestoneProofPayload) => Promise<void>;
+  reviewMilestoneProof: (payload: ReviewMilestoneProofPayload) => Promise<void>;
 }
 
 export interface RecordInvestmentPayload {
@@ -275,351 +277,306 @@ const createInitialState = (): PlatformData => ({
 const InvestorDataContext = createContext<InvestorDataContextValue | undefined>(undefined);
 
 export function InvestorDataProvider({ children }: { children: ReactNode }) {
+  const { user, token } = useAuth();
   const [data, setData] = useState<PlatformData>(() => createInitialState());
 
-  const updateData = (partial: Partial<PlatformData>) => {
+  const updateData = useCallback((partial: Partial<PlatformData>) => {
     setData((prev) => ({
       ...prev,
       ...partial,
     }));
-  };
+  }, []);
 
-  const recordInvestment = ({ project, amount, tokens, txHash, investorId, investorName }: RecordInvestmentPayload): InvestmentCertificate | null => {
-    if (!project || amount <= 0 || tokens <= 0 || !investorId) {
-      return null;
-    }
+  const resetData = useCallback(() => {
+    setData(createInitialState());
+  }, []);
 
-    let generatedCertificate: InvestmentCertificate | null = null;
-    setData((prev) => {
-      const nextHoldings = [...(prev.holdings ?? [])];
-      const holdingIndex = nextHoldings.findIndex((holding) => holding.projectId === project.id);
-      const expectedPayout = amount * (1 + project.roi / 100);
-      const maturityDate = (() => {
-        const date = new Date();
-        date.setFullYear(date.getFullYear() + project.tenure);
-        return date.toLocaleDateString("en-IN");
-      })();
-
-      if (holdingIndex >= 0) {
-        const existing = nextHoldings[holdingIndex];
-        const updatedHolding: PortfolioHolding = {
-          ...existing,
-          tokens: existing.tokens + tokens,
-          invested: existing.invested + amount,
-          currentValue: (existing.currentValue ?? existing.invested) + amount,
-          expectedPayout: (existing.expectedPayout ?? existing.invested) + expectedPayout,
-          maturityDate: existing.maturityDate ?? maturityDate,
-        };
-        nextHoldings[holdingIndex] = updatedHolding;
-      } else {
-        nextHoldings.push({
-          projectId: project.id,
-          tokens,
-          invested: amount,
-          currentValue: amount,
-          expectedPayout,
-          maturityDate,
-        });
-      }
-
-      const resolvedTxHash = txHash ?? `0x${cryptoRandom()}`;
-      const tx: InvestorTransaction = {
-        id: `tx-${Date.now().toString(36)}`,
-        timestamp: new Date().toLocaleString("en-IN"),
-        projectId: project.id,
-        projectName: project.name,
-        type: "buy",
-        tokens,
-        price: project.tokenPrice,
-        status: "completed",
-        txHash: resolvedTxHash,
-      };
-
-      const nextTransactions = [tx, ...(prev.transactions ?? [])];
-
-      const issuedAt = new Date().toISOString();
-      const certificateId = `cert-${Date.now().toString(36)}-${cryptoRandom()}`;
-      const sanitizedProjectName = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const certificateFileName = `${sanitizedProjectName || "investment"}-${certificateId}.txt`;
-      const certificateContent = [
-        "InfraBondX Investment Certificate",
-        "----------------------------------",
-        `Project: ${project.name}`,
-        `Issuer: ${project.issuerName}`,
-        `Investor: ${investorName ?? investorId}`,
-        `Tokens Minted: ${tokens}`,
-        `Amount Locked: ₹${amount.toLocaleString("en-IN")}`,
-        `ROI (P.A.): ${project.roi}%`,
-        `Tenure: ${project.tenure} years`,
-        `Transaction Hash: ${resolvedTxHash}`,
-        `Issued At: ${new Date(issuedAt).toLocaleString("en-IN")}`,
-        "\nThis autogenerated certificate is for demo purposes only.",
-      ].join("\n");
-      const certificateDownloadUrl =
-        typeof window !== "undefined" && typeof URL !== "undefined"
-          ? URL.createObjectURL(new Blob([certificateContent], { type: "text/plain" }))
-          : undefined;
-
-      const certificate: InvestmentCertificate = {
-        id: certificateId,
-        projectId: project.id,
-        projectName: project.name,
-        issuerId: project.issuerId,
-        issuerName: project.issuerName,
-        investorId,
-        investorName: investorName ?? investorId,
-        tokens,
-        amount,
-        issuedAt,
-        txHash: resolvedTxHash,
-        fileName: certificateFileName,
-        downloadUrl: certificateDownloadUrl,
-      };
-
-      generatedCertificate = certificate;
-
-      const investorMap = { ...(prev.projectInvestors ?? {}) };
-      const existingInvestors = new Set(investorMap[project.id] ?? []);
-      existingInvestors.add(investorId);
-      investorMap[project.id] = Array.from(existingInvestors);
-
-      const prevMetrics = prev.metrics ?? {};
-      const previousInvestment = prevMetrics.totalInvested ?? 0;
-      const totalInvested = previousInvestment + amount;
-      const weightedRoiNumerator = (prevMetrics.averageRoi ?? 0) * previousInvestment + project.roi * amount;
-      const nextMetrics: InvestorMetrics = {
-        totalInvested,
-        tokensOwned: (prevMetrics.tokensOwned ?? 0) + tokens,
-        expectedReturns: (prevMetrics.expectedReturns ?? 0) + expectedPayout,
-        averageRoi: totalInvested > 0 ? weightedRoiNumerator / totalInvested : project.roi,
-      };
-
-      const nextProjects = (prev.projects ?? []).map((existingProject) =>
-        existingProject.id === project.id
-          ? { ...existingProject, fundingRaised: existingProject.fundingRaised + amount }
-          : existingProject
-      );
-
-      return {
+  const fetchProjects = useCallback(async () => {
+    try {
+      const projects = await apiRequest<any[]>("/projects");
+      setData((prev) => ({
         ...prev,
-        holdings: nextHoldings,
-        transactions: nextTransactions,
-        metrics: nextMetrics,
-        projects: nextProjects,
-        projectInvestors: investorMap,
-        investmentCertificates: [certificate, ...(prev.investmentCertificates ?? [])],
-      };
-    });
+        projects: projects.map(normalizeProject),
+      }));
+    } catch (error) {
+      console.error("Failed to fetch projects", error);
+    }
+  }, []);
 
-    return generatedCertificate;
-  };
+  const fetchInvestorData = useCallback(async () => {
+    if (!token || !user || user.role !== "investor") {
+      return;
+    }
+    try {
+      const [holdings, transactions] = await Promise.all([
+        apiRequest<any[]>(`/investors/${user.id}/portfolio`, { authToken: token }),
+        apiRequest<any[]>(`/investors/${user.id}/transactions`, { authToken: token }),
+      ]);
+      const normalizedHoldings = holdings.map(normalizeHolding);
+      const normalizedTransactions = transactions.map(normalizeTransaction);
+      setData((prev) => ({
+        ...prev,
+        holdings: normalizedHoldings,
+        transactions: normalizedTransactions,
+        metrics: deriveInvestorMetrics(normalizedHoldings),
+      }));
+    } catch (error) {
+      console.error("Failed to fetch investor data", error);
+    }
+  }, [token, user]);
 
-  const submitMilestoneProof = ({ projectId, milestoneId, files, notes }: SubmitMilestoneProofPayload) => {
-    if (!projectId || !milestoneId) {
+  const fetchIssuerData = useCallback(async () => {
+    if (!token || !user || user.role !== "issuer") {
+      return;
+    }
+    try {
+      const [summary, submissions] = await Promise.all([
+        apiRequest<IssuerSummaryMetrics>(`/issuers/${user.id}/summary`, { authToken: token }),
+        apiRequest<any[]>("/issuers/submissions/mine", { authToken: token }),
+      ]);
+      setData((prev) => ({
+        ...prev,
+        issuerSummary: summary,
+        projectSubmissions: submissions.map(normalizeSubmission),
+      }));
+    } catch (error) {
+      console.error("Failed to fetch issuer data", error);
+    }
+  }, [token, user]);
+
+  const fetchAdminData = useCallback(async () => {
+    if (!token || !user || user.role !== "admin") {
+      return;
+    }
+    try {
+      const [summary, submissions] = await Promise.all([
+        apiRequest<AdminSummaryMetrics>("/admin/summary", { authToken: token }),
+        apiRequest<any[]>("/admin/submissions", { authToken: token }),
+      ]);
+      setData((prev) => ({
+        ...prev,
+        adminSummary: summary,
+        projectSubmissions: submissions.map(normalizeSubmission),
+      }));
+    } catch (error) {
+      console.error("Failed to fetch admin data", error);
+    }
+  }, [token, user]);
+
+  useEffect(() => {
+    void fetchProjects();
+  }, [fetchProjects]);
+
+  useEffect(() => {
+    if (!token || !user) {
+      setData((prev) => ({
+        ...createInitialState(),
+        projects: prev.projects ?? [],
+      }));
       return;
     }
 
-    setData((prev) => {
-      const nextProjects = (prev.projects ?? []).map((project) => {
-        if (project.id !== projectId) {
-          return project;
-        }
+    if (user.role === "investor") {
+      void fetchInvestorData();
+    } else if (user.role === "issuer") {
+      void fetchIssuerData();
+    } else if (user.role === "admin") {
+      void fetchAdminData();
+    }
+  }, [token, user, fetchAdminData, fetchInvestorData, fetchIssuerData]);
 
-        const submissionTimestamp = new Date().toISOString();
-        const nextMilestones = (project.milestones ?? []).map((milestone) => {
-          if (milestone.id !== milestoneId) {
-            return milestone;
-          }
+  const recordInvestment = useCallback(
+    async (payload: RecordInvestmentPayload) => {
+      if (!token || !user) {
+        throw new Error("Unauthorized");
+      }
+      if (!payload.project || payload.amount <= 0 || payload.tokens <= 0 || !payload.investorId) {
+        return null;
+      }
 
-          const preparedProofs: MilestoneProof[] = files
+      try {
+        const response = await apiRequest<any>("/investors/investments", {
+          method: "POST",
+          authToken: token,
+          body: {
+            projectId: payload.project.id,
+            amount: payload.amount,
+            tokens: payload.tokens,
+          },
+        });
+
+        await fetchInvestorData();
+        await fetchProjects();
+
+        const resolvedHash = payload.txHash ?? response.txHash ?? `0x${cryptoRandom()}`;
+        const certificate = generateCertificate({ ...payload, txHash: resolvedHash });
+
+        setData((prev) => {
+          const investorMap = { ...(prev.projectInvestors ?? {}) };
+          const existingInvestors = new Set(investorMap[payload.project.id] ?? []);
+          existingInvestors.add(payload.investorId);
+          investorMap[payload.project.id] = Array.from(existingInvestors);
+
+          return {
+            ...prev,
+            investmentCertificates: [certificate, ...(prev.investmentCertificates ?? [])],
+            projectInvestors: investorMap,
+          };
+        });
+
+        return certificate;
+      } catch (error) {
+        console.error("Failed to record investment", error);
+        throw error;
+      }
+    },
+    [fetchInvestorData, fetchProjects, token, user]
+  );
+
+  const submitProject = useCallback(
+    async (input: ProjectSubmissionInput) => {
+      if (!token || !user || user.role !== "issuer") {
+        throw new Error("Unauthorized");
+      }
+      try {
+        const response = await apiRequest<any>("/issuers/submissions", {
+          method: "POST",
+          authToken: token,
+          body: serializeSubmissionInput(input),
+        });
+        const submission = normalizeSubmission(response);
+        setData((prev) => ({
+          ...prev,
+          projectSubmissions: [submission, ...(prev.projectSubmissions ?? [])],
+        }));
+        return submission;
+      } catch (error) {
+        console.error("Failed to submit project", error);
+        throw error;
+      }
+    },
+    [token, user]
+  );
+
+  const approveProject = useCallback(
+    async (submissionId: string) => {
+      if (!token || !user || user.role !== "admin") {
+        throw new Error("Unauthorized");
+      }
+      try {
+        await apiRequest(`/admin/submissions/${submissionId}/approve`, {
+          method: "PATCH",
+          authToken: token,
+        });
+        await Promise.all([fetchAdminData(), fetchProjects()]);
+      } catch (error) {
+        console.error("Failed to approve project", error);
+        throw error;
+      }
+    },
+    [fetchAdminData, fetchProjects, token, user]
+  );
+
+  const rejectProject = useCallback(
+    async (submissionId: string, reason?: string) => {
+      if (!token || !user || user.role !== "admin") {
+        throw new Error("Unauthorized");
+      }
+      try {
+        await apiRequest(`/admin/submissions/${submissionId}/reject`, {
+          method: "PATCH",
+          authToken: token,
+          body: { reason },
+        });
+        await fetchAdminData();
+      } catch (error) {
+        console.error("Failed to reject project", error);
+        throw error;
+      }
+    },
+    [fetchAdminData, token, user]
+  );
+
+  const submitMilestoneProof = useCallback(
+    async ({ projectId, milestoneId, files, notes }: SubmitMilestoneProofPayload) => {
+      if (!token || !user) {
+        throw new Error("Unauthorized");
+      }
+      try {
+        const serializedFiles = await Promise.all(
+          files
             .filter((entry) => entry.file)
-            .map((entry) => ({
-              id: `proof-${Date.now().toString(36)}-${cryptoRandom()}`,
+            .map(async (entry) => ({
               label: entry.label,
               fileName: entry.file.name,
               sizeBytes: entry.file.size,
-              uploadedAt: submissionTimestamp,
-              previewUrl:
-                typeof window !== "undefined" && typeof URL !== "undefined"
-                  ? URL.createObjectURL(entry.file)
-                  : undefined,
-            }));
+              previewUrl: await fileToDataUrl(entry.file),
+            }))
+        );
 
-          if (preparedProofs.length === 0 && !notes) {
-            return milestone;
-          }
-
-          const updatedMilestone: Milestone = {
-            ...milestone,
-            status: preparedProofs.length > 0 ? "in-progress" : milestone.status,
-            proofStatus: preparedProofs.length > 0 ? "submitted" : milestone.proofStatus,
-            proofUploads: [...(milestone.proofUploads ?? []), ...preparedProofs],
-            lastProofAt: preparedProofs.length > 0 ? submissionTimestamp : milestone.lastProofAt,
-            proofNotes: notes ?? milestone.proofNotes,
-          };
-
-          return updatedMilestone;
+        await apiRequest(`/projects/${projectId}/milestones/${milestoneId}/proofs`, {
+          method: "POST",
+          authToken: token,
+          body: { files: serializedFiles, notes },
         });
 
-        return {
-          ...project,
-          milestones: nextMilestones,
-        };
-      });
+        await fetchProjects();
+      } catch (error) {
+        console.error("Failed to submit milestone proof", error);
+        throw error;
+      }
+    },
+    [fetchProjects, token, user]
+  );
 
-      return {
-        ...prev,
-        projects: nextProjects,
-      };
-    });
-  };
-
-  const reviewMilestoneProof = ({ projectId, milestoneId, decision, notes }: ReviewMilestoneProofPayload) => {
-    if (!projectId || !milestoneId) {
-      return;
-    }
-
-    setData((prev) => {
-      const nextProjects = (prev.projects ?? []).map((project) => {
-        if (project.id !== projectId) {
-          return project;
-        }
-
-        const reviewTimestamp = new Date().toISOString();
-        const nextMilestones = (project.milestones ?? []).map((milestone) => {
-          if (milestone.id !== milestoneId) {
-            return milestone;
-          }
-
-          const approved = decision === "approved";
-          const reviewedMilestone: Milestone = {
-            ...milestone,
-            status: approved ? "completed" : "in-progress",
-            proofStatus: approved ? "approved" : "rejected",
-            lastProofAt: reviewTimestamp,
-            proofNotes: notes ?? milestone.proofNotes,
-          };
-
-          return reviewedMilestone;
+  const reviewMilestoneProof = useCallback(
+    async ({ projectId, milestoneId, decision, notes }: ReviewMilestoneProofPayload) => {
+      if (!token || !user || user.role !== "admin") {
+        throw new Error("Unauthorized");
+      }
+      try {
+        await apiRequest(`/projects/${projectId}/milestones/${milestoneId}/review`, {
+          method: "POST",
+          authToken: token,
+          body: { decision, notes },
         });
 
-        return {
-          ...project,
-          milestones: nextMilestones,
-        };
-      });
+        setData((prev) => {
+          const currentProjects = prev.projects ?? [];
+          const nextProjects = currentProjects.map((project) => {
+            if (project.id !== projectId) {
+              return project;
+            }
+            return {
+              ...project,
+              milestones: (project.milestones ?? []).map((milestone) =>
+                milestone.id === milestoneId
+                  ? {
+                      ...milestone,
+                      status: decision === "approved" ? "completed" : "in-progress",
+                      proofStatus: decision === "approved" ? "approved" : "rejected",
+                      proofNotes: notes ?? milestone.proofNotes,
+                      lastProofAt: new Date().toISOString(),
+                    }
+                  : milestone
+              ),
+            };
+          });
+          return {
+            ...prev,
+            projects: nextProjects,
+          };
+        });
 
-      return {
-        ...prev,
-        projects: nextProjects,
-      };
-    });
-  };
-
-  const submitProject = (input: ProjectSubmissionInput): ProjectSubmission => {
-    const submission: ProjectSubmission = {
-      id: `submission-${Date.now().toString(36)}`,
-      status: "pending",
-      submittedAt: new Date().toISOString(),
-      ...input,
-      documents: input.documents.map((doc) => ({ ...doc })),
-      milestones: input.milestones.map((milestone) => ({ ...milestone })),
-    };
-    setData((prev) => ({
-      ...prev,
-      projectSubmissions: [...(prev.projectSubmissions ?? []), submission],
-    }));
-    return submission;
-  };
-
-  const approveProject = (submissionId: string) => {
-    setData((prev) => {
-      const submissions = prev.projectSubmissions ?? [];
-      const submissionIndex = submissions.findIndex((item) => item.id === submissionId);
-      if (submissionIndex === -1) {
-        return prev;
+        await fetchProjects();
+        await fetchAdminData();
+      } catch (error) {
+        console.error("Failed to review milestone proof", error);
+        throw error;
       }
-
-      const submission = submissions[submissionIndex];
-      if (submission.status !== "pending") {
-        return prev;
-      }
-
-      const updatedSubmission: ProjectSubmission = {
-        ...submission,
-        status: "approved",
-        approvedAt: new Date().toISOString(),
-      };
-
-      const normalizedProjectId = `project-${submission.id}`;
-      const derivedProject: Project = {
-        id: normalizedProjectId,
-        name: submission.name,
-        location: submission.location,
-        category: submission.category,
-        description: submission.description,
-        fundingTarget: submission.fundingTarget,
-        fundingRaised: 0,
-        roi: submission.roi,
-        tenure: submission.tenure,
-        tokenPrice: submission.tokenPrice,
-        riskScore: 55,
-        issuerId: submission.issuerId,
-        issuerName: submission.issuerName,
-        issuerVerified: true,
-        milestones: submission.milestones.map((milestone) => ({ ...milestone })),
-        status: "active",
-      };
-
-      const nextSubmissions = [...submissions];
-      nextSubmissions[submissionIndex] = updatedSubmission;
-
-      const existingProjectIndex = prev.projects?.findIndex((project) => project.id === normalizedProjectId) ?? -1;
-      const nextProjects = [...(prev.projects ?? [])];
-      if (existingProjectIndex === -1) {
-        nextProjects.push(derivedProject);
-      } else {
-        nextProjects[existingProjectIndex] = derivedProject;
-      }
-
-      return {
-        ...prev,
-        projectSubmissions: nextSubmissions,
-        projects: nextProjects,
-      };
-    });
-  };
-
-  const rejectProject = (submissionId: string, reason?: string) => {
-    setData((prev) => {
-      const submissions = prev.projectSubmissions ?? [];
-      const submissionIndex = submissions.findIndex((item) => item.id === submissionId);
-      if (submissionIndex === -1) {
-        return prev;
-      }
-
-      const submission = submissions[submissionIndex];
-      if (submission.status !== "pending") {
-        return prev;
-      }
-
-      const updatedSubmission: ProjectSubmission = {
-        ...submission,
-        status: "rejected",
-        rejectionReason: reason,
-      };
-
-      const nextSubmissions = [...submissions];
-      nextSubmissions[submissionIndex] = updatedSubmission;
-
-      return {
-        ...prev,
-        projectSubmissions: nextSubmissions,
-      };
-    });
-  };
-
-  const resetData = () => setData(createInitialState());
+    },
+    [fetchAdminData, fetchProjects, token, user]
+  );
 
   const value = useMemo(
     () => ({
@@ -633,7 +590,7 @@ export function InvestorDataProvider({ children }: { children: ReactNode }) {
       approveProject,
       rejectProject,
     }),
-    [data]
+    [approveProject, data, recordInvestment, rejectProject, resetData, submitMilestoneProof, submitProject, reviewMilestoneProof, updateData]
   );
 
   return <InvestorDataContext.Provider value={value}>{children}</InvestorDataContext.Provider>;
@@ -648,5 +605,216 @@ export function useInvestorData() {
 }
 
 export const usePlatformData = useInvestorData;
+
+function normalizeProject(project: any): Project {
+  return {
+    id: project.id ?? project._id ?? cryptoRandom(),
+    name: project.name,
+    location: project.location,
+    category: project.category,
+    description: project.description,
+    fundingTarget: Number(project.fundingTarget ?? 0),
+    fundingRaised: Number(project.fundingRaised ?? 0),
+    roi: Number(project.roi ?? 0),
+    tenure: Number(project.tenure ?? 0),
+    tokenPrice: Number(project.tokenPrice ?? 0),
+    riskScore: Number(project.riskScore ?? 0),
+    issuerId:
+      typeof project.issuer === "string"
+        ? project.issuer
+        : project.issuer?._id ?? project.issuerId ?? "",
+    issuerName: project.issuerName ?? project.issuer?.name ?? "Issuer",
+    issuerVerified: Boolean(project.issuerVerified),
+    milestones: (project.milestones ?? []).map(normalizeMilestone),
+    status: project.status ?? "pending",
+    image: project.image,
+  };
+}
+
+function normalizeMilestone(milestone: any): Milestone {
+  return {
+    id: milestone.id ?? milestone._id ?? cryptoRandom(),
+    name: milestone.name ?? "Milestone",
+    status: milestone.status ?? "pending",
+    date: milestone.date ?? milestone.dueDate,
+    escrowRelease: milestone.escrowRelease,
+    proofStatus: milestone.proofStatus,
+    proofUploads: (milestone.proofUploads ?? []).map(normalizeProof),
+    lastProofAt: milestone.lastProofAt,
+    proofNotes: milestone.proofNotes,
+  };
+}
+
+function normalizeProof(proof: any): MilestoneProof {
+  return {
+    id: proof.id ?? proof._id ?? cryptoRandom(),
+    label: proof.label ?? "Proof",
+    fileName: proof.fileName ?? "document",
+    sizeBytes: proof.sizeBytes,
+    uploadedAt: proof.uploadedAt ?? new Date().toISOString(),
+    previewUrl: proof.previewUrl,
+  };
+}
+
+function normalizeSubmission(entry: any): ProjectSubmission {
+  return {
+    id: entry.id ?? entry._id ?? cryptoRandom(),
+    name: entry.name,
+    category: entry.category,
+    location: entry.location,
+    description: entry.description,
+    fundingTarget: Number(entry.fundingTarget ?? 0),
+    roi: Number(entry.roi ?? 0),
+    tenure: Number(entry.tenure ?? 0),
+    tokenPrice: Number(entry.tokenPrice ?? 0),
+    milestones: (entry.milestones ?? []).map(normalizeMilestone),
+    documents: (entry.documents ?? []).map((doc: any) => ({
+      id: doc.id ?? doc._id ?? cryptoRandom(),
+      label: doc.label ?? "Document",
+      uploaded: doc.uploaded ?? Boolean(doc.fileName),
+      fileName: doc.fileName,
+      previewUrl: doc.previewUrl,
+      sizeBytes: doc.sizeBytes,
+    })),
+    issuerId:
+      typeof entry.issuer === "string"
+        ? entry.issuer
+        : entry.issuer?._id ?? entry.issuerId ?? "",
+    issuerName: entry.issuerName ?? entry.issuer?.name ?? "Issuer",
+    status: entry.status ?? "pending",
+    submittedAt: entry.submittedAt ?? entry.createdAt ?? new Date().toISOString(),
+    approvedAt: entry.approvedAt,
+    rejectionReason: entry.rejectionReason,
+  };
+}
+
+function serializeSubmissionInput(input: ProjectSubmissionInput) {
+  return {
+    name: input.name,
+    category: input.category,
+    location: input.location,
+    description: input.description,
+    fundingTarget: input.fundingTarget,
+    roi: input.roi,
+    tenure: input.tenure,
+    tokenPrice: input.tokenPrice,
+    milestones: input.milestones,
+    documents: (input.documents ?? []).map((doc) => ({
+      id: doc.id,
+      label: doc.label,
+      uploaded: doc.uploaded,
+      fileName: doc.fileName,
+      previewUrl: doc.previewUrl,
+      sizeBytes: doc.sizeBytes,
+    })),
+    issuerId: input.issuerId,
+    issuerName: input.issuerName,
+  };
+}
+
+function normalizeHolding(entry: any): PortfolioHolding {
+  return {
+    projectId:
+      entry.projectId ?? (typeof entry.project === "string" ? entry.project : entry.project?._id) ?? cryptoRandom(),
+    tokens: Number(entry.tokens ?? 0),
+    invested: Number(entry.invested ?? entry.amount ?? 0),
+    currentValue: Number(entry.currentValue ?? entry.amount ?? 0),
+    expectedPayout: Number(entry.expectedPayout ?? entry.amount ?? 0),
+    maturityDate:
+      typeof entry.maturityDate === "string"
+        ? entry.maturityDate
+        : entry.maturityDate
+        ? new Date(entry.maturityDate).toISOString()
+        : entry.project?.maturityDate
+        ? new Date(entry.project.maturityDate).toISOString()
+        : undefined,
+  };
+}
+
+function normalizeTransaction(entry: any): InvestorTransaction {
+  return {
+    id: entry.id ?? entry._id ?? cryptoRandom(),
+    timestamp: entry.timestamp ?? entry.createdAt ?? new Date().toISOString(),
+    projectId:
+      entry.projectId ?? (typeof entry.project === "string" ? entry.project : entry.project?._id) ?? cryptoRandom(),
+    projectName: entry.projectName ?? entry.project?.name ?? "Project",
+    type: "buy",
+    tokens: Number(entry.tokens ?? 0),
+    price: Number(entry.price ?? entry.project?.tokenPrice ?? 0),
+    status: entry.status ?? "completed",
+    txHash: entry.txHash ?? `0x${cryptoRandom()}`,
+  };
+}
+
+function deriveInvestorMetrics(holdings: PortfolioHolding[]): InvestorMetrics | undefined {
+  if (holdings.length === 0) {
+    return undefined;
+  }
+  const totalInvested = holdings.reduce((sum, holding) => sum + holding.invested, 0);
+  const tokensOwned = holdings.reduce((sum, holding) => sum + holding.tokens, 0);
+  const expectedReturns = holdings.reduce((sum, holding) => sum + (holding.expectedPayout ?? 0), 0);
+  const averageRoi = totalInvested > 0 ? (expectedReturns / totalInvested - 1) * 100 : undefined;
+
+  return {
+    totalInvested,
+    tokensOwned,
+    expectedReturns,
+    averageRoi,
+  };
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function generateCertificate(params: RecordInvestmentPayload & { txHash: string }): InvestmentCertificate {
+  const { project, amount, tokens, txHash, investorId, investorName } = params;
+  const issuedAt = new Date().toISOString();
+  const certificateId = `cert-${Date.now().toString(36)}-${cryptoRandom()}`;
+  const sanitizedProjectName = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const certificateFileName = `${sanitizedProjectName || "investment"}-${certificateId}.txt`;
+  const certificateContent = [
+    "InfraBondX Investment Certificate",
+    "----------------------------------",
+    `Project: ${project.name}`,
+    `Issuer: ${project.issuerName}`,
+    `Investor: ${investorName ?? investorId}`,
+    `Tokens Minted: ${tokens}`,
+    `Amount Locked: ₹${amount.toLocaleString("en-IN")}`,
+    `ROI (P.A.): ${project.roi}%`,
+    `Tenure: ${project.tenure} years`,
+    `Transaction Hash: ${txHash}`,
+    `Issued At: ${new Date(issuedAt).toLocaleString("en-IN")}`,
+    "\nThis autogenerated certificate is for demo purposes only.",
+  ].join("\n");
+  const certificateDownloadUrl =
+    typeof window !== "undefined" && typeof URL !== "undefined"
+      ? URL.createObjectURL(new Blob([certificateContent], { type: "text/plain" }))
+      : undefined;
+
+  return {
+    id: certificateId,
+    projectId: project.id,
+    projectName: project.name,
+    issuerId: project.issuerId,
+    issuerName: project.issuerName,
+    investorId,
+    investorName: investorName ?? investorId,
+    tokens,
+    amount,
+    issuedAt,
+    txHash,
+    fileName: certificateFileName,
+    downloadUrl: certificateDownloadUrl,
+  };
+}
 
 const cryptoRandom = () => Math.random().toString(16).substring(2, 10);

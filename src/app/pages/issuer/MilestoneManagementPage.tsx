@@ -108,7 +108,7 @@ export function MilestoneManagementPage({ onNavigate }: MilestoneManagementPageP
     }));
   };
 
-  const handleSubmitProof = () => {
+  const handleSubmitProof = async () => {
     if (!selectedProject || !selectedMilestone) {
       setUploadFeedback("Select a milestone to continue.");
       return;
@@ -121,17 +121,24 @@ export function MilestoneManagementPage({ onNavigate }: MilestoneManagementPageP
     }
 
     setProofSubmitting(true);
-    submitMilestoneProof({
-      projectId: selectedProject.id,
-      milestoneId: selectedMilestone,
-      files: preparedFiles.map((draft) => ({ label: draft.label, file: draft.file! })),
-      notes: proofNotes.trim() || undefined,
-    });
-    setProofSubmitting(false);
-    setProofDrafts(buildInitialProofDrafts());
-    setProofNotes("");
-    setShowUploadModal(false);
-    setActionBanner("Proof submitted. Awaiting admin verification.");
+    setUploadFeedback(null);
+    try {
+      await submitMilestoneProof({
+        projectId: selectedProject.id,
+        milestoneId: selectedMilestone,
+        files: preparedFiles.map((draft) => ({ label: draft.label, file: draft.file! })),
+        notes: proofNotes.trim() || undefined,
+      });
+      setProofDrafts(buildInitialProofDrafts());
+      setProofNotes("");
+      setShowUploadModal(false);
+      setActionBanner("Proof submitted. Awaiting admin verification.");
+    } catch (error) {
+      console.error("Milestone proof submission failed", error);
+      setUploadFeedback("Unable to submit proof right now. Please try again.");
+    } finally {
+      setProofSubmitting(false);
+    }
   };
 
   const milestoneStats = useMemo(() => {

@@ -24,10 +24,12 @@ const statusFilters: Array<{ id: SubmissionStatus; label: string }> = [
 export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) {
   const { data, approveProject, rejectProject } = usePlatformData();
   const submissions = data.projectSubmissions ?? [];
+  const projects = data.projects ?? [];
   const [activeStatus, setActiveStatus] = useState<SubmissionStatus>("pending");
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [isActionPending, setIsActionPending] = useState(false);
 
   const filteredSubmissions = useMemo(
     () => submissions.filter((submission) => submission.status === activeStatus),
@@ -52,6 +54,20 @@ export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) 
   }, [selectedSubmissionId, activeStatus]);
 
   const selectedSubmission = submissions.find((submission) => submission.id === selectedSubmissionId) ?? null;
+  const linkedProject = useMemo(() => {
+    if (!selectedSubmission) {
+      return null;
+    }
+    return (
+      projects.find(
+        (project) =>
+          project.issuerId === selectedSubmission.issuerId &&
+          project.name.toLowerCase() === selectedSubmission.name.toLowerCase()
+      ) ?? null
+    );
+  }, [projects, selectedSubmission]);
+
+  const resolvedMilestones = linkedProject?.milestones ?? selectedSubmission?.milestones ?? [];
 
   const summaryStats = useMemo(() => {
     const pending = submissions.filter((submission) => submission.status === "pending").length;
@@ -72,15 +88,24 @@ export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) 
     return `₹${value.toLocaleString("en-IN")}`;
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedSubmission || selectedSubmission.status !== "pending") {
       return;
     }
-    approveProject(selectedSubmission.id);
-    setActionMessage("Project approved and now visible to investors.");
+    setIsActionPending(true);
+    setActionMessage(null);
+    try {
+      await approveProject(selectedSubmission.id);
+      setActionMessage("Project approved and now visible to investors.");
+    } catch (error) {
+      console.error("Approval failed", error);
+      setActionMessage("Unable to approve the project right now. Try again later.");
+    } finally {
+      setIsActionPending(false);
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedSubmission || selectedSubmission.status !== "pending") {
       return;
     }
@@ -88,9 +113,18 @@ export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) 
       setActionMessage("Provide a reason before rejecting a submission.");
       return;
     }
-    rejectProject(selectedSubmission.id, rejectionReason.trim());
-    setActionMessage("Submission rejected and issuer notified.");
-    setRejectionReason("");
+    setIsActionPending(true);
+    setActionMessage(null);
+    try {
+      await rejectProject(selectedSubmission.id, rejectionReason.trim());
+      setActionMessage("Submission rejected and issuer notified.");
+      setRejectionReason("");
+    } catch (error) {
+      console.error("Rejection failed", error);
+      setActionMessage("Unable to reject the submission right now. Try again later.");
+    } finally {
+      setIsActionPending(false);
+    }
   };
 
   const getStatusBadgeVariant = (status: SubmissionStatus) => {
@@ -251,8 +285,15 @@ export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) 
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-2">Milestones</h4>
-                  <MilestoneStepper milestones={selectedSubmission.milestones} />
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Milestones</h4>
+                    {linkedProject && (
+                      <span className="text-xs text-muted-foreground">
+                        Showing live project status
+                      </span>
+                    )}
+                  </div>
+                  <MilestoneStepper milestones={resolvedMilestones} />
                 </div>
 
                 <div>
@@ -302,10 +343,20 @@ export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) 
                       onChange={(event) => setRejectionReason(event.target.value)}
                     />
                     <div className="flex gap-3">
-                      <Button variant="success" className="flex-1" onClick={handleApprove}>
+                      <Button
+                        variant="success"
+                        className="flex-1"
+                        onClick={handleApprove}
+                        disabled={isActionPending}
+                      >
                         <CheckCircle2 className="w-4 h-4 mr-2" /> Approve Listing
                       </Button>
-                      <Button variant="destructive" className="flex-1" onClick={handleReject}>
+                      <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={handleReject}
+                        disabled={isActionPending}
+                      >
                         <XCircle className="w-4 h-4 mr-2" /> Reject Submission
                       </Button>
                     </div>
@@ -314,7 +365,11 @@ export function ProjectApprovalsPage({ onNavigate }: ProjectApprovalsPageProps) 
 
                 {selectedSubmission.status !== "pending" && (
                   <div className="p-3 bg-accent rounded-lg text-sm">
-                    {selectedSubmission.status === "approved" ? "This project is live for investors." : `Rejected: ${selectedSubmission.rejectionReason ?? "No reason provided."}`}
+                    {selectedSubmission.status === "approved"
+                      ? linkedProject
+                        ? "This project is live and reflects current milestone progress."
+                        : "This project is live for investors."
+                      : `Rejected: ${selectedSubmission.rejectionReason ?? "No reason provided."}`}
                   </div>
                 )}
 

@@ -21,6 +21,7 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
   const { recordInvestment } = useInvestorData();
   const { user } = useAuth();
   const [certificate, setCertificate] = useState<InvestmentCertificate | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { tokens, expectedReturn, numericAmount } = useMemo(() => {
     const parsedAmount = Number(amount) || 0;
@@ -33,19 +34,21 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
 
   const handleInvest = () => {
     if (!acceptedTerms) return;
+    setErrorMessage(null);
     setStep("confirm");
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (tokens <= 0 || numericAmount < project.tokenPrice || !user?.id) {
       setStep("input");
       return;
     }
+    setErrorMessage(null);
     setStep("processing");
-    // Simulate blockchain transaction
-    setTimeout(() => {
-      const generatedHash = `0x${cryptoRandom()}${cryptoRandom()}`;
-      const generatedCertificate = recordInvestment({
+    const generatedHash = `0x${cryptoRandom()}${cryptoRandom()}`;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const generatedCertificate = await recordInvestment({
         project,
         amount: numericAmount,
         tokens,
@@ -53,10 +56,17 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
         investorId: user.id,
         investorName: user.name ?? user.email ?? user.id,
       });
+      if (!generatedCertificate) {
+        throw new Error("Certificate not generated");
+      }
       setCertificate(generatedCertificate);
-      setTransactionHash(generatedHash);
+      setTransactionHash(generatedCertificate.txHash ?? generatedHash);
       setStep("success");
-    }, 3000);
+    } catch (error) {
+      console.error("Investment failed", error);
+      setErrorMessage("Unable to complete investment. Please try again.");
+      setStep("input");
+    }
   };
 
   const handleSuccess = () => {
@@ -84,6 +94,11 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
           </div>
         </CardHeader>
         <CardContent>
+          {errorMessage && (
+            <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md p-3">
+              {errorMessage}
+            </div>
+          )}
           {/* Input Step */}
           {step === "input" && (
             <div className="space-y-6">
@@ -257,7 +272,7 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Transaction Hash</span>
-                    <span className="font-mono text-xs">{transactionHash ?? "—"}</span>
+                  <span className="font-mono text-xs">{transactionHash ?? "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Status</span>

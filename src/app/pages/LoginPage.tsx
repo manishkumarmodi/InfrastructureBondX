@@ -15,16 +15,20 @@ export function LoginPage({ role, onBack, onLoginSuccess }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { login, loginWithGoogle } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       return;
     }
 
-    const success = login(email, password, role);
+    setError(null);
+    setIsSubmitting(true);
+    const success = await login(email, password, role);
+    setIsSubmitting(false);
     if (!success) {
       setError(
         role === "admin"
@@ -138,18 +142,14 @@ export function LoginPage({ role, onBack, onLoginSuccess }: LoginPageProps) {
                 </div>
               </div>
 
-              <div className="p-3 bg-accent rounded-lg text-sm">
-                <strong>Demo Mode:</strong> Admin login currently supports only admin@gmail.com /
-                123456. Investors and issuers can use any credentials.
-              </div>
-
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
                   {error}
                 </div>
               )}
 
-              <Button type="submit" className="w-full" size="lg">
+              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Sign In
               </Button>
 

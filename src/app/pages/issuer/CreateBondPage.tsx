@@ -182,7 +182,7 @@ export function CreateBondPage({ onNavigate }: CreateBondPageProps) {
         escrowRelease: milestone.escrowRelease ? Number(milestone.escrowRelease) : undefined,
       }));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isSubmitting) {
       return;
     }
@@ -237,10 +237,11 @@ export function CreateBondPage({ onNavigate }: CreateBondPageProps) {
     setStatusMessage(null);
 
     try {
-      submitProject(payload);
+      await submitProject(payload);
       setStatusMessage({ variant: "success", message: "Project submitted for admin review. Track the status below." });
       resetForm();
     } catch (error) {
+      console.error("Project submission failed", error);
       setStatusMessage({ variant: "error", message: "Unable to submit project. Please try again." });
     } finally {
       setIsSubmitting(false);

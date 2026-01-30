@@ -131,18 +131,22 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     return `${value.toFixed(1)}%`;
   };
 
-  const handleMilestoneDecision = (entry: PendingMilestoneProof, decision: "approved" | "rejected") => {
+  const handleMilestoneDecision = async (entry: PendingMilestoneProof, decision: "approved" | "rejected") => {
     const entryKey = `${entry.projectId}-${entry.milestoneId}`;
-    reviewMilestoneProof({
-      projectId: entry.projectId,
-      milestoneId: entry.milestoneId,
-      decision,
-      notes: reviewNotes[entryKey]?.trim() || undefined,
-    });
-    setReviewNotes((prev) => ({
-      ...prev,
-      [entryKey]: "",
-    }));
+    try {
+      await reviewMilestoneProof({
+        projectId: entry.projectId,
+        milestoneId: entry.milestoneId,
+        decision,
+        notes: reviewNotes[entryKey]?.trim() || undefined,
+      });
+      setReviewNotes((prev) => ({
+        ...prev,
+        [entryKey]: "",
+      }));
+    } catch (error) {
+      console.error("Milestone decision failed", error);
+    }
   };
 
   return (
