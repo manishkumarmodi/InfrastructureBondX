@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal, MapPin, TrendingUp, Target, Clock } from "lucide-react";
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { RiskScoreMeter } from "@/app/components/RiskScoreMeter";
 import { VerifiedBadge } from "@/app/components/VerifiedBadge";
-import { mockProjects } from "@/data/mockData";
 import { cn } from "@/lib/utils";
+import { useInvestorData } from "@/contexts/InvestorDataContext";
+import type { Project } from "@/types/project";
 
 interface MarketplacePageProps {
   onNavigate: (page: string) => void;
@@ -16,15 +17,13 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("most-funded");
+  const { data } = useInvestorData();
+  const projects = data.projects ?? [];
 
-  const categories = [
-    { id: "all", label: "All Projects" },
-    { id: "roads", label: "Roads & Highways" },
-    { id: "transport", label: "Public Transport" },
-    { id: "energy", label: "Renewable Energy" },
-    { id: "smart-cities", label: "Smart Cities" },
-    { id: "ports", label: "Ports & Logistics" },
-  ];
+  const categories = useMemo(() => {
+    const unique = Array.from(new Set(projects.map((project) => project.category)));
+    return unique.map((category) => ({ id: category, label: category }));
+  }, [projects]);
 
   const sortOptions = [
     { id: "most-funded", label: "Most Funded" },
@@ -32,6 +31,29 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
     { id: "lowest-risk", label: "Lowest Risk" },
     { id: "shortest-tenure", label: "Shortest Tenure" },
   ];
+
+  const filteredProjects = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const matchesQuery = (project: Project) => {
+      if (!normalizedQuery) return true;
+      return (
+        project.name.toLowerCase().includes(normalizedQuery) ||
+        project.location.toLowerCase().includes(normalizedQuery) ||
+        project.category.toLowerCase().includes(normalizedQuery)
+      );
+    };
+
+    const matchesCategory = (project: Project) => {
+      if (selectedCategory === "all") return true;
+      return project.category === selectedCategory;
+    };
+
+    const filtered = projects.filter((project) => matchesQuery(project) && matchesCategory(project));
+    const sorter = sortStrategies[sortBy];
+    return sorter ? [...filtered].sort(sorter) : filtered;
+  }, [projects, searchQuery, selectedCategory, sortBy]);
+
+  const visibleCategories = [{ id: "all", label: "All Projects" }, ...categories];
 
   return (
     <div className="space-y-6">
@@ -74,7 +96,7 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
 
       {/* Category Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {categories.map((cat) => (
+        {visibleCategories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setSelectedCategory(cat.id)}
@@ -92,9 +114,16 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
 
       {/* Project Cards Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockProjects.map((project) => {
-          const fundingProgress = (project.fundingRaised / project.fundingTarget) * 100;
-
+        {filteredProjects.length === 0 && (
+          <Card className="md:col-span-2 lg:col-span-3">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              No projects match the current filters. Try clearing the search or selecting a
+              different category.
+            </CardContent>
+          </Card>
+        )}
+        {filteredProjects.map((project) => {
+          const fundingProgress = getFundingProgress(project);
           return (
             <Card
               key={project.id}
@@ -102,7 +131,6 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
               onClick={() => onNavigate(`project-${project.id}`)}
             >
               <CardContent className="p-6 space-y-4">
-                {/* Header */}
                 <div>
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-semibold leading-tight">{project.name}</h3>
@@ -118,7 +146,6 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                   )}
                 </div>
 
-                {/* Funding Progress */}
                 <div>
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-muted-foreground">Funding Progress</span>
@@ -131,16 +158,11 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                     />
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      ₹{(project.fundingRaised / 10000000).toFixed(1)}Cr raised
-                    </span>
-                    <span>
-                      ₹{(project.fundingTarget / 10000000).toFixed(1)}Cr target
-                    </span>
+                    <span>₹{(project.fundingRaised / 10000000).toFixed(1)}Cr raised</span>
+                    <span>₹{(project.fundingTarget / 10000000).toFixed(1)}Cr target</span>
                   </div>
                 </div>
 
-                {/* Key Metrics */}
                 <div className="grid grid-cols-3 gap-4 py-4 border-t border-b">
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1 text-[#10b981] mb-1">
@@ -165,15 +187,20 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                   </div>
                 </div>
 
-                {/* Risk Score */}
                 <RiskScoreMeter score={project.riskScore} showLabel={false} />
 
-                {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
                   <Button className="flex-1" onClick={() => onNavigate(`project-${project.id}`)}>
                     View Details
                   </Button>
-                  <Button variant="outline" className="flex-1">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onNavigate(`project-${project.id}`);
+                    }}
+                  >
                     Invest
                   </Button>
                 </div>
@@ -182,13 +209,20 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
           );
         })}
       </div>
-
-      {/* Load More */}
-      <div className="text-center">
-        <Button variant="outline" size="lg">
-          Load More Projects
-        </Button>
-      </div>
     </div>
   );
 }
+
+const getFundingProgress = (project: Project) => {
+  if (!project.fundingTarget) {
+    return 0;
+  }
+  return (project.fundingRaised / project.fundingTarget) * 100;
+};
+
+const sortStrategies: Record<string, (a: Project, b: Project) => number> = {
+  "most-funded": (a, b) => getFundingProgress(b) - getFundingProgress(a),
+  "highest-roi": (a, b) => b.roi - a.roi,
+  "lowest-risk": (a, b) => a.riskScore - b.riskScore,
+  "shortest-tenure": (a, b) => a.tenure - b.tenure,
+};

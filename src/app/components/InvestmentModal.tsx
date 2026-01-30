@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { X, Coins, CheckCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { Project } from "@/data/mockData";
+import { Project } from "@/types/project";
+import { useInvestorData, type InvestmentCertificate } from "@/contexts/InvestorDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface InvestmentModalProps {
   project: Project;
@@ -15,9 +17,19 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
   const [step, setStep] = useState<"input" | "confirm" | "processing" | "success">("input");
   const [amount, setAmount] = useState<string>("1000");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const { recordInvestment } = useInvestorData();
+  const { user } = useAuth();
+  const [certificate, setCertificate] = useState<InvestmentCertificate | null>(null);
 
-  const tokens = Math.floor(Number(amount) / project.tokenPrice);
-  const expectedReturn = Number(amount) * (1 + project.roi / 100);
+  const { tokens, expectedReturn, numericAmount } = useMemo(() => {
+    const parsedAmount = Number(amount) || 0;
+    return {
+      tokens: Math.floor(parsedAmount / project.tokenPrice),
+      expectedReturn: parsedAmount * (1 + project.roi / 100),
+      numericAmount: parsedAmount,
+    };
+  }, [amount, project.roi, project.tokenPrice]);
 
   const handleInvest = () => {
     if (!acceptedTerms) return;
@@ -25,9 +37,24 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
   };
 
   const handleConfirm = () => {
+    if (tokens <= 0 || numericAmount < project.tokenPrice || !user?.id) {
+      setStep("input");
+      return;
+    }
     setStep("processing");
     // Simulate blockchain transaction
     setTimeout(() => {
+      const generatedHash = `0x${cryptoRandom()}${cryptoRandom()}`;
+      const generatedCertificate = recordInvestment({
+        project,
+        amount: numericAmount,
+        tokens,
+        txHash: generatedHash,
+        investorId: user.id,
+        investorName: user.name ?? user.email ?? user.id,
+      });
+      setCertificate(generatedCertificate);
+      setTransactionHash(generatedHash);
       setStep("success");
     }, 3000);
   };
@@ -158,7 +185,7 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Investment Amount</span>
-                    <span className="font-medium">₹{Number(amount).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">₹{numericAmount.toLocaleString("en-IN")}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tokens</span>
@@ -230,7 +257,7 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Transaction Hash</span>
-                  <span className="font-mono text-xs">0x7f9a...4b3c</span>
+                    <span className="font-mono text-xs">{transactionHash ?? "—"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Status</span>
@@ -246,6 +273,19 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
                   View Portfolio
                 </Button>
               </div>
+
+              {certificate?.downloadUrl && (
+                <Button asChild className="w-full" variant="secondary">
+                  <a
+                    href={certificate.downloadUrl}
+                    download={certificate.fileName}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Download Investment Certificate
+                  </a>
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -253,3 +293,5 @@ export function InvestmentModal({ project, onClose, onSuccess }: InvestmentModal
     </div>
   );
 }
+
+const cryptoRandom = () => Math.random().toString(16).substring(2, 10);

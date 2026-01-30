@@ -1,24 +1,4 @@
-import { Milestone } from "@/app/components/MilestoneStepper";
-
-export interface Project {
-  id: string;
-  name: string;
-  location: string;
-  category: string;
-  description: string;
-  fundingTarget: number;
-  fundingRaised: number;
-  roi: number;
-  tenure: number;
-  tokenPrice: number;
-  riskScore: number;
-  issuerId: string;
-  issuerName: string;
-  issuerVerified: boolean;
-  milestones: Milestone[];
-  status: "active" | "completed" | "pending";
-  image?: string;
-}
+import { Project } from "@/types/project";
 
 export const mockProjects: Project[] = [
   {

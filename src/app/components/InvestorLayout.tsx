@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
-import { LayoutDashboard, ShoppingBag, Wallet, History, TrendingUp, LogOut, Building2, Bell, User } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { LayoutDashboard, ShoppingBag, Wallet, History, TrendingUp, LogOut, Building2, Bell, User, FileText, CheckCircle, ShieldCheck, AlertTriangle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useAuth, type UserRole } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { DisclaimerBanner } from "./DisclaimerBanner";
 
@@ -13,13 +14,38 @@ interface InvestorLayoutProps {
 export function InvestorLayout({ children, currentPage, onNavigate }: InvestorLayoutProps) {
   const { user, logout } = useAuth();
 
-  const menuItems = [
-    { id: "investor-dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { id: "marketplace", icon: ShoppingBag, label: "Marketplace" },
-    { id: "portfolio", icon: Wallet, label: "Portfolio" },
-    { id: "transactions", icon: History, label: "Transactions" },
-    { id: "secondary-market", icon: TrendingUp, label: "Secondary Market" },
-  ];
+  type RoleKey = Exclude<UserRole, null>;
+
+  const navItems: Record<RoleKey, Array<{ id: string; icon: LucideIcon; label: string }>> = {
+    investor: [
+      { id: "investor-dashboard", icon: LayoutDashboard, label: "Dashboard" },
+      { id: "marketplace", icon: ShoppingBag, label: "Marketplace" },
+      { id: "portfolio", icon: Wallet, label: "Portfolio" },
+      { id: "transactions", icon: History, label: "Transactions" },
+      { id: "secondary-market", icon: TrendingUp, label: "Secondary Market" },
+    ],
+    issuer: [
+      { id: "issuer-dashboard", icon: LayoutDashboard, label: "Dashboard" },
+      { id: "create-bond", icon: FileText, label: "Create Listing" },
+      { id: "milestones", icon: CheckCircle, label: "Milestones" },
+    ],
+    admin: [
+      { id: "admin-dashboard", icon: LayoutDashboard, label: "Overview" },
+      { id: "approve-projects", icon: FileText, label: "Project Approvals" },
+      { id: "verify-issuers", icon: ShieldCheck, label: "Verify Issuers" },
+      { id: "fraud-monitoring", icon: AlertTriangle, label: "Fraud Monitoring" },
+    ],
+  };
+
+  const portalLabels: Record<RoleKey, string> = {
+    investor: "Investor Portal",
+    issuer: "Issuer Console",
+    admin: "Admin Console",
+  };
+
+  const activeRole: RoleKey = (user?.role ?? "investor") as RoleKey;
+  const menuItems = navItems[activeRole];
+  const portalLabel = portalLabels[activeRole];
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,7 +60,7 @@ export function InvestorLayout({ children, currentPage, onNavigate }: InvestorLa
             </div>
             <div>
               <span className="text-xl font-semibold text-primary">InfraBondX</span>
-              <span className="ml-2 text-xs px-2 py-1 bg-accent rounded">Investor Portal</span>
+              <span className="ml-2 text-xs px-2 py-1 bg-accent rounded">{portalLabel}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">

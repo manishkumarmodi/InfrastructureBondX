@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Building2, CheckCircle, User, FileText, Shield } from "lucide-react";
+import { useRef, useState } from "react";
+import { Building2, CheckCircle, User, FileText, Shield, Upload, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -12,6 +12,8 @@ interface KYCOnboardingProps {
 
 export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
   const [step, setStep] = useState(1);
+  const [idProof, setIdProof] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { completeKYC } = useAuth();
 
   const steps = [
@@ -23,6 +25,18 @@ export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
   const handleComplete = () => {
     completeKYC();
     onComplete();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setIdProof(file);
+  };
+
+  const handleRemoveFile = () => {
+    setIdProof(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -117,13 +131,42 @@ export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
                 </div>
                 <div>
                   <label className="text-sm mb-2 block">Upload ID Proof</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                  <input
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
                     <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      Click to upload or drag and drop
+                      {idProof ? "Replace uploaded document" : "Click to upload or drag and drop"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG (Max 5MB)</p>
-                  </div>
+                  </button>
+                  {idProof && (
+                    <div className="mt-3 flex items-center justify-between p-3 border rounded-lg bg-muted text-sm">
+                      <div className="flex items-center gap-2">
+                        <Upload className="w-4 h-4 text-primary" />
+                        <span className="font-medium truncate max-w-[200px]" title={idProof.name}>
+                          {idProof.name}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-accent rounded-full"
+                        onClick={handleRemoveFile}
+                        aria-label="Remove selected document"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -182,7 +225,11 @@ export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
                 </Button>
               )}
               {step < 3 ? (
-                <Button onClick={() => setStep(step + 1)} className="flex-1">
+                <Button
+                  onClick={() => setStep(step + 1)}
+                  className="flex-1"
+                  disabled={step === 2 && !idProof}
+                >
                   Continue
                 </Button>
               ) : (

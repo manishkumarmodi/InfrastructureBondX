@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, ArrowLeft, Mail, Lock } from "lucide-react";
+import { Building2, ArrowLeft, Mail, Lock, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -8,20 +8,56 @@ import { useAuth, UserRole } from "@/contexts/AuthContext";
 interface LoginPageProps {
   role: UserRole;
   onBack: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (role: UserRole) => void;
 }
 
 export function LoginPage({ role, onBack, onLoginSuccess }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { login, loginWithGoogle } = useAuth();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      login(email, role);
-      onLoginSuccess();
+    if (!email || !password) {
+      return;
     }
+
+    const success = login(email, password, role);
+    if (!success) {
+      setError(
+        role === "admin"
+          ? "Invalid admin credentials. Use admin@gmail.com / 123456."
+          : "Unable to sign in with the provided credentials."
+      );
+      return;
+    }
+
+    setError(null);
+    onLoginSuccess(role);
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!role) {
+      return;
+    }
+
+    setError(null);
+    setIsGoogleLoading(true);
+    const success = await loginWithGoogle(role);
+    setIsGoogleLoading(false);
+
+    if (!success) {
+      setError(
+        role === "admin"
+          ? "Admin Google sign-in requires the admin@gmail.com account."
+          : "Unable to sign in with Google. Please try again."
+      );
+      return;
+    }
+
+    onLoginSuccess(role);
   };
 
   const getRoleTitle = () => {
@@ -103,12 +139,36 @@ export function LoginPage({ role, onBack, onLoginSuccess }: LoginPageProps) {
               </div>
 
               <div className="p-3 bg-accent rounded-lg text-sm">
-                <strong>Demo Mode:</strong> Use any email and password to login. Real authentication
-                is not implemented in this MVP.
+                <strong>Demo Mode:</strong> Admin login currently supports only admin@gmail.com /
+                123456. Investors and issuers can use any credentials.
               </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                  {error}
+                </div>
+              )}
 
               <Button type="submit" className="w-full" size="lg">
                 Sign In
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                size="lg"
+                onClick={handleGoogleLogin}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold text-[#4285F4]">
+                    G
+                  </span>
+                )}
+                Continue with Google
               </Button>
 
               <div className="text-center text-sm text-muted-foreground">

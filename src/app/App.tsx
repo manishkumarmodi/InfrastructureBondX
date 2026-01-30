@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth, type UserRole } from "@/contexts/AuthContext";
 import { LandingPage } from "@/app/pages/LandingPage";
 import { RoleSelectPage } from "@/app/pages/RoleSelectPage";
 import { LoginPage } from "@/app/pages/LoginPage";
@@ -14,33 +14,37 @@ import { IssuerDashboard } from "@/app/pages/issuer/IssuerDashboard";
 import { CreateBondPage } from "@/app/pages/issuer/CreateBondPage";
 import { MilestoneManagementPage } from "@/app/pages/issuer/MilestoneManagementPage";
 import { AdminDashboard } from "@/app/pages/admin/AdminDashboard";
+import { ProjectApprovalsPage } from "@/app/pages/admin/ProjectApprovalsPage";
+import { InvestorDataProvider } from "@/contexts/InvestorDataContext";
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("landing");
-  const [selectedRole, setSelectedRole] = useState<"investor" | "issuer" | "admin" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
   const { user, isAuthenticated } = useAuth();
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
   };
 
-  const handleRoleSelect = (role: "investor" | "issuer" | "admin") => {
+  const handleRoleSelect = (role: Exclude<UserRole, null>) => {
     setSelectedRole(role);
     setCurrentPage("login");
   };
 
-  const handleLoginSuccess = () => {
-    if (user?.role === "investor" && !user?.kycCompleted) {
+  const handleLoginSuccess = (role: UserRole) => {
+    if (!role) {
+      return;
+    }
+    if (role === "investor") {
       setCurrentPage("kyc");
-    } else {
-      // Navigate to appropriate dashboard
-      if (user?.role === "investor") {
-        setCurrentPage("investor-dashboard");
-      } else if (user?.role === "issuer") {
-        setCurrentPage("issuer-dashboard");
-      } else if (user?.role === "admin") {
-        setCurrentPage("admin-dashboard");
-      }
+      return;
+    }
+    if (role === "issuer") {
+      setCurrentPage("issuer-dashboard");
+      return;
+    }
+    if (role === "admin") {
+      setCurrentPage("admin-dashboard");
     }
   };
 
@@ -108,11 +112,11 @@ function AppContent() {
     return (
       <InvestorLayout currentPage={currentPage} onNavigate={handleNavigate}>
         {currentPage === "admin-dashboard" && <AdminDashboard onNavigate={handleNavigate} />}
-        {(currentPage === "verify-issuers" || currentPage === "approve-projects" || currentPage === "fraud-monitoring") && (
+        {currentPage === "approve-projects" && <ProjectApprovalsPage onNavigate={handleNavigate} />}
+        {(currentPage === "verify-issuers" || currentPage === "fraud-monitoring") && (
           <div className="text-center py-20">
             <h2 className="text-2xl font-bold mb-4">
               {currentPage === "verify-issuers" && "Issuer Verification"}
-              {currentPage === "approve-projects" && "Project Approval"}
               {currentPage === "fraud-monitoring" && "Fraud Monitoring"}
             </h2>
             <p className="text-muted-foreground">
@@ -131,7 +135,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <InvestorDataProvider>
+        <AppContent />
+      </InvestorDataProvider>
     </AuthProvider>
   );
 }

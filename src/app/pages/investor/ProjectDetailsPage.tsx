@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, MapPin, Building2, TrendingUp, Clock, Users, FileText, Download, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
@@ -7,8 +7,8 @@ import { VerifiedBadge } from "@/app/components/VerifiedBadge";
 import { MilestoneStepper } from "@/app/components/MilestoneStepper";
 import { EscrowVisualization } from "@/app/components/EscrowVisualization";
 import { ROICalculator } from "@/app/components/ROICalculator";
-import { mockProjects } from "@/data/mockData";
 import { InvestmentModal } from "@/app/components/InvestmentModal";
+import { useInvestorData } from "@/contexts/InvestorDataContext";
 
 interface ProjectDetailsPageProps {
   projectId: string;
@@ -17,23 +17,30 @@ interface ProjectDetailsPageProps {
 
 export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPageProps) {
   const [showInvestModal, setShowInvestModal] = useState(false);
-  
-  // Get project from mock data
-  const project = mockProjects.find((p) => p.id === projectId.replace("project-", ""));
+  const { data } = useInvestorData();
+  const sanitizedId = projectId.replace("project-", "");
+  const project = useMemo(() => (data.projects ?? []).find((p) => p.id === sanitizedId), [data.projects, sanitizedId]);
 
   if (!project) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-2xl font-bold mb-4">Project Not Found</h2>
+        <h2 className="text-2xl font-bold mb-4">Project data unavailable</h2>
+        <p className="text-muted-foreground mb-6">Connect your project feed or pick another listing.</p>
         <Button onClick={() => onNavigate("marketplace")}>Back to Marketplace</Button>
       </div>
     );
   }
 
-  const fundingProgress = (project.fundingRaised / project.fundingTarget) * 100;
+  const fundingProgress = project.fundingTarget
+    ? (project.fundingRaised / project.fundingTarget) * 100
+    : 0;
   const totalEscrow = project.fundingRaised;
-  const releasedEscrow = totalEscrow * 0.35; // 35% released based on completed milestones
-  const lockedEscrow = totalEscrow - releasedEscrow;
+  const completedEscrowPercent = project.milestones
+    .filter((milestone) => milestone.status === "completed")
+    .reduce((acc, milestone) => acc + (milestone.escrowRelease ?? 0), 0);
+  const releasedEscrow = (totalEscrow * completedEscrowPercent) / 100;
+  const lockedEscrow = Math.max(totalEscrow - releasedEscrow, 0);
+  const investorCount = project.tokenPrice > 0 ? Math.round(project.fundingRaised / project.tokenPrice) : 0;
 
   return (
     <div className="space-y-6">
@@ -91,7 +98,7 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-[#f59e0b]">
-              {(project.fundingRaised / project.tokenPrice).toLocaleString()}
+              {investorCount.toLocaleString("en-IN")}
             </p>
             <p className="text-xs text-muted-foreground">Investors</p>
           </CardContent>
@@ -123,7 +130,7 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-muted-foreground" />
                     <span className="font-medium">
-                      {(project.fundingRaised / project.tokenPrice).toLocaleString()}
+                      {investorCount.toLocaleString("en-IN")}
                     </span>
                   </div>
                 </div>
@@ -159,7 +166,7 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
               <CardTitle>Project Milestones</CardTitle>
             </CardHeader>
             <CardContent>
-              <MilestoneStepper milestones={project.milestones} />
+              <MilestoneStepper milestones={project.milestones ?? []} />
             </CardContent>
           </Card>
 
@@ -186,33 +193,10 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {[
-                  { name: "Tender Approval Document", date: "Jan 15, 2026", size: "2.4 MB" },
-                  { name: "Environmental Clearance", date: "Dec 28, 2025", size: "1.8 MB" },
-                  { name: "Milestone 1 Completion Proof", date: "Jan 15, 2026", size: "5.2 MB" },
-                  { name: "Milestone 2 Audit Report", date: "Mar 20, 2026", size: "3.1 MB" },
-                  { name: "Construction Progress Photos", date: "Jan 28, 2026", size: "12.6 MB" },
-                ].map((doc, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium text-sm">{doc.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.date} • {doc.size}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Upload verified approvals, audit reports, and milestone evidence from the issuer
+                dashboard to surface them here for investors.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -226,17 +210,10 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
             </CardHeader>
             <CardContent className="space-y-4">
               <RiskScoreMeter score={project.riskScore} />
-              <div className="pt-4 border-t space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  <strong>Factors:</strong>
-                </p>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>✓ Issuer verified and credible</li>
-                  <li>✓ Clear milestone structure</li>
-                  <li>✓ Government-backed project</li>
-                  <li>⚠ Subject to regulatory changes</li>
-                </ul>
-              </div>
+              <p className="text-sm text-muted-foreground border-t pt-4">
+                Store your own diligence checklist, credit ratings, or third-party analytics here to
+                explain how this score was derived.
+              </p>
             </CardContent>
           </Card>
 

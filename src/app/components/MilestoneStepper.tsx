@@ -1,5 +1,16 @@
-import { Check, Clock, Lock } from "lucide-react";
+import { Check, Clock, Lock, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type MilestoneProofStatus = "not-submitted" | "submitted" | "approved" | "rejected";
+
+export interface MilestoneProof {
+  id: string;
+  label: string;
+  fileName: string;
+  sizeBytes?: number;
+  uploadedAt: string;
+  previewUrl?: string;
+}
 
 export interface Milestone {
   id: string;
@@ -7,6 +18,10 @@ export interface Milestone {
   status: "completed" | "in-progress" | "pending";
   date?: string;
   escrowRelease?: number; // percentage
+  proofStatus?: MilestoneProofStatus;
+  proofUploads?: MilestoneProof[];
+  lastProofAt?: string;
+  proofNotes?: string;
 }
 
 interface MilestoneStepperProps {
@@ -72,6 +87,21 @@ export function MilestoneStepper({ milestones, className }: MilestoneStepperProp
                         {milestone.escrowRelease}% Escrow {isCompleted ? "Released" : "Pending"}
                       </span>
                     </div>
+                  )}
+                  {milestone.lastProofAt && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Proof submitted {new Date(milestone.lastProofAt).toLocaleDateString("en-IN")}
+                    </p>
+                  )}
+                  {milestone.proofStatus === "submitted" && (
+                    <p className="text-xs text-[#f59e0b] mt-2 inline-flex items-center gap-1">
+                      <Shield className="w-3 h-3" /> Awaiting verification
+                    </p>
+                  )}
+                  {milestone.proofStatus === "approved" && (
+                    <p className="text-xs text-[#10b981] mt-2 inline-flex items-center gap-1">
+                      <Shield className="w-3 h-3" /> Proof approved
+                    </p>
                   )}
                 </div>
                 <span
