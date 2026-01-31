@@ -1,300 +1,400 @@
-import { Building2, ShieldCheck, TrendingUp, Users, ArrowRight, CheckCircle, Lock, FileCheck, Zap, BriefcaseBusiness, Coins, LineChart } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BarChart2,
+  Building2,
+  FileCheck,
+  Globe2,
+  LineChart,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
-import { DisclaimerBanner } from "@/app/components/DisclaimerBanner";
+
 
 interface LandingPageProps {
   onNavigate: (page: string) => void;
 }
 
+const heroStats = [
+  { label: "Pipeline", value: "₹620Cr", detail: "tokenized issuances" },
+  { label: "Investors", value: "18.4K", detail: "verified KYC wallets" },
+  { label: "Avg. Yield", value: "9.8% p.a.", detail: "current cohorts" },
+];
+
+const featureTiles = [
+  {
+    title: "Institution-grade diligence",
+    description: "Credit scoring, ESG heatmaps, and audited data rooms built into onboarding.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Live telemetry",
+    description: "Escrow automation tied to drone imagery, IoT signals, and proof stacks.",
+    icon: LineChart,
+  },
+  {
+    title: "Inclusive participation",
+    description: "Retail + HNI allocation from ₹100 with automated compliance, identity, and suitability checks.",
+    icon: Users,
+  },
+];
+
+const journeySteps = [
+  {
+    stage: "Origination",
+    summary: "Issuer KYC + ESG scoring",
+    detail: "Government and PPP desks upload DPR, EPC, and sustainability data packs for review.",
+  },
+  {
+    stage: "Structuring",
+    summary: "Fractional bond packaging",
+    detail: "Smart escrow ladders define payouts, KPIs, and reviewer permissions.",
+  },
+  {
+    stage: "Allocation",
+    summary: "Investor window",
+    detail: "Retail/HNI book building with instant wallet issuance and risk disclosures.",
+  },
+  {
+    stage: "Monitoring",
+    summary: "Milestone verification",
+    detail: "Proof stacks unlock capital; investors watch telemetry and impact metrics in real time.",
+  },
+];
+
+const complianceLayers = [
+  {
+    title: "Escrow governance",
+    icon: Lock,
+    bullets: ["Tri-party accounts", "Weighted milestone ladder", "Automated release rules"],
+  },
+  {
+    title: "Proof engine",
+    icon: FileCheck,
+    bullets: ["Geo-tagged imagery", "Signed contractor invoices", "Independent audit uploads"],
+  },
+  {
+    title: "Transparency APIs",
+    icon: Zap,
+    bullets: ["Downloadable ledgers", "Regulator-ready exports", "Live webhook events"],
+  },
+];
+
+const impactStats = [
+  { value: "2,450", label: "Jobs enabled" },
+  { value: "127 km", label: "Transit laid" },
+  { value: "18,500 t", label: "CO₂ saved" },
+  { value: "43", label: "Projects tokenized" },
+];
+
+const marqueeBrands = ["NHAI", "Smart City Mission", "DFCCIL", "ADB Sandbox", "Bharat Rail Infra"];
+
 export function LandingPage({ onNavigate }: LandingPageProps) {
   return (
-    <div className="min-h-screen bg-background">
-      <DisclaimerBanner />
-      
-      {/* Navigation */}
-      <nav className="border-b bg-white sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-semibold text-primary">InfraBondX</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => onNavigate("role-select")}>
-              Sign In
-            </Button>
-            <Button onClick={() => onNavigate("role-select")}>
-              Get Started <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-[#02030a] text-white overflow-hidden">
 
-      {/* Hero Section */}
-      <section className="py-20 px-4 bg-gradient-to-br from-[#0c4a6e] to-[#075985]">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full text-white mb-6">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-sm">Tokenized Infrastructure Bonds • SDG 9 Aligned</span>
-          </div>
-          <h1 className="text-5xl font-bold text-white mb-6">
-            Invest Small, Build Big Infrastructure
-          </h1>
-          <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
-            Breaking down infrastructure financing barriers. Enable retail investors to participate
-            in nation-building with as low as ₹100, while ensuring transparency through
-            milestone-verified escrow release.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-white text-primary hover:bg-white/90"
-              onClick={() => onNavigate("role-select")}
-            >
-              Explore Projects
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="text-white border-white hover:bg-white/10"
-              onClick={() => onNavigate("role-select")}
-            >
-              Issuer Login
-            </Button>
-          </div>
 
-          {/* Problem Statement */}
-          <div className="mt-16 grid md:grid-cols-4 gap-6 text-left">
-            {[
-              { label: "Traditional Min. Entry", value: "$100K+", icon: Coins },
-              { label: "Avg. Lock-in Period", value: "10-30 yrs", icon: Lock },
-              { label: "Funding Gap (Global)", value: "$15T", icon: TrendingUp },
-              { label: "Retail Exclusion", value: "99%", icon: Users },
-            ].map((stat, i) => (
-              <Card key={i} className="bg-white/10 border-white/20 backdrop-blur">
-                <CardContent className="p-6">
-                  <stat.icon className="w-8 h-8 text-white mb-2" />
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
-                  <p className="text-sm text-white/80">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-30" style={{
+          backgroundImage:
+            "linear-gradient(120deg, rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(0deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+          backgroundSize: "140px 140px",
+        }} />
 
-      {/* How It Works */}
-      <section className="py-20 px-4 bg-muted">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">How InfraBondX Works</h2>
-            <p className="text-lg text-muted-foreground">
-              Simple, transparent, and secure infrastructure financing in 4 steps
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              {
-                step: "01",
-                icon: LineChart,
-                title: "Choose Project",
-                description:
-                  "Browse verified infrastructure projects with transparent risk ratings and milestone tracking.",
-              },
-              {
-                step: "02",
-                icon: Coins,
-                title: "Buy InfraTokens",
-                description:
-                  "Invest as low as ₹100-₹500. Tokens represent fractional bond ownership, not crypto.",
-              },
-              {
-                step: "03",
-                icon: Lock,
-                title: "Milestone Escrow",
-                description:
-                  "Your funds are locked in smart contract escrow, released only after verified milestones.",
-              },
-              {
-                step: "04",
-                icon: TrendingUp,
-                title: "Track & Earn Returns",
-                description:
-                  "Monitor real-time progress, audit proofs, and earn returns upon project completion.",
-              },
-            ].map((step, i) => (
-              <div key={i} className="relative">
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl font-bold mb-4">
-                    {step.step}
-                  </div>
-                  <div className="p-4 bg-accent rounded-lg mb-4">
-                    <step.icon className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                  <p className="text-muted-foreground">{step.description}</p>
-                </div>
-                {i < 3 && (
-                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-primary/30" />
-                )}
+        {/* Navigation */}
+        <nav className="sticky top-0 z-50 bg-[#02030a]/80 backdrop-blur border-b border-white/10">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#1d4ed8] to-[#38bdf8] flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Trust Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Built on Trust & Transparency</h2>
-            <p className="text-lg text-muted-foreground">
-              Every layer designed for accountability and investor protection
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-6">
-            {[
-              {
-                icon: ShieldCheck,
-                title: "Verified Issuers",
-                description:
-                  "Only government bodies and verified PPP companies can list projects after rigorous KYC.",
-              },
-              {
-                icon: FileCheck,
-                title: "Auditable Milestones",
-                description:
-                  "Every milestone requires documentary proof (photos, invoices, audit reports) before approval.",
-              },
-              {
-                icon: Lock,
-                title: "Escrow Release by Proof",
-                description:
-                  "Funds unlock automatically only when authorities verify milestone completion.",
-              },
-              {
-                icon: Zap,
-                title: "Smart Contract Logic",
-                description:
-                  "Simulated blockchain escrow ensures tamper-proof, automated, transparent fund flow.",
-              },
-            ].map((feature, i) => (
-              <Card key={i} className="border-2 hover:border-primary transition-colors">
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-[#10b981]/10 flex items-center justify-center mx-auto mb-4">
-                    <feature.icon className="w-6 h-6 text-[#10b981]" />
-                  </div>
-                  <h3 className="font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Impact Section */}
-      <section className="py-20 px-4 bg-muted">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#10b981]/10 rounded-full text-[#10b981] mb-4">
-              <Building2 className="w-4 h-4" />
-              <span className="text-sm font-medium">SDG 9: Industry, Innovation & Infrastructure</span>
+              <div>
+                <p className="text-lg font-semibold tracking-wide">InfraBondX</p>
+                <p className="text-xs text-white/60">Tokenized infrastructure desk</p>
+              </div>
             </div>
-            <h2 className="text-4xl font-bold text-foreground mb-4">Real Impact, Measurable Change</h2>
-            <p className="text-lg text-muted-foreground">
-              Your investment creates tangible infrastructure and economic growth
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => onNavigate("role-select")}>
+                Sign in
+              </Button>
+              <Button className="bg-white text-slate-900 hover:bg-white/90" onClick={() => onNavigate("role-select")}>
+                Launch app
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero */}
+        <section className="px-4 pt-16 pb-24 relative">
+          <div className="max-w-6xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-sm text-white/80 mb-6">
+                <Sparkles className="w-4 h-4" />
+                SDG 9 infrastructure debt stack
+              </div>
+              <h1 className="text-4xl md:text-5xl font-semibold leading-tight tracking-tight">
+                A textured, enterprise-grade surface for tokenized infrastructure bonds.
+              </h1>
+              <p className="text-lg text-white/70 mt-6 max-w-2xl">
+                Bring metros, green corridors, and logistics parks to life with fractional ₹100 entries, audited escrows, and transparent milestone telemetry.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Button size="lg" className="bg-gradient-to-r from-[#22d3ee] to-[#818cf8] text-slate-900" onClick={() => onNavigate("role-select")}>
+                  Explore live issuances
+                  <ArrowUpRight className="w-4 h-4 ml-2" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10"
+                  onClick={() => onNavigate("role-select")}
+                >
+                  Book issuer demo
+                </Button>
+              </div>
+              <div className="mt-12 grid sm:grid-cols-3 gap-4">
+                {heroStats.map((stat) => (
+                  <Card key={stat.label} className="bg-white/5 border-white/10">
+                    <CardContent className="p-4 space-y-1">
+                      <p className="text-sm uppercase tracking-[0.3em] text-white/50">{stat.label}</p>
+                      <p className="text-2xl font-semibold">{stat.value}</p>
+                      <p className="text-xs text-white/60">{stat.detail}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative hidden lg:block h-[420px]" aria-hidden="true">
+              <div className="absolute -inset-6 rounded-[32px] bg-gradient-to-br from-[#22d3ee]/30 via-[#a855f7]/20 to-transparent blur-3xl" />
+              <div className="relative h-full w-full rounded-[32px] border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center">
+                {/* Full-size animated infrastructure illustration */}
+                <svg width="100%" height="100%" viewBox="0 0 420 420" fill="none" className="absolute inset-0" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                  <rect x="50" y="300" width="320" height="40" rx="16" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
+                  <rect x="90" y="240" width="80" height="60" rx="12" fill="#0ea5e9" opacity="0.8">
+                    <animate attributeName="y" values="240;220;240" dur="3s" repeatCount="indefinite" />
+                  </rect>
+                  <rect x="270" y="220" width="80" height="80" rx="12" fill="#a855f7" opacity="0.8">
+                    <animate attributeName="y" values="220;200;220" dur="3.5s" repeatCount="indefinite" />
+                  </rect>
+                  <rect x="180" y="170" width="60" height="120" rx="12" fill="#f472b6" opacity="0.8">
+                    <animate attributeName="y" values="170;150;170" dur="2.7s" repeatCount="indefinite" />
+                  </rect>
+                  <rect x="140" y="120" width="140" height="30" rx="8" fill="#fcd34d" opacity="0.7">
+                    <animate attributeName="y" values="120;100;120" dur="4s" repeatCount="indefinite" />
+                  </rect>
+                  <circle cx="210" cy="90" r="28" fill="#38bdf8" opacity="0.7">
+                    <animate attributeName="cy" values="90;70;90" dur="3.2s" repeatCount="indefinite" />
+                  </circle>
+                  <rect x="80" y="350" width="260" height="16" rx="8" fill="#64748b" opacity="0.3" />
+                  <rect x="120" y="375" width="180" height="12" rx="6" fill="#64748b" opacity="0.2" />
+                </svg>
+                {/* Glow effect */}
+                <div className="absolute inset-0 w-full h-full rounded-[32px] bg-gradient-to-br from-[#38bdf8]/30 via-[#a855f7]/20 to-[#f472b6]/10 blur-2xl opacity-70" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Project Story */}
+        <section className="px-4 pb-16">
+          <div className="max-w-5xl mx-auto rounded-3xl border border-white/10 bg-white/5 p-8 space-y-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">About InfraBondX</p>
+            <p className="text-lg text-white/80">
+              InfraBondX is a next-generation platform for financing and monitoring large-scale infrastructure projects. It enables tokenized sovereign-grade bonds, milestone-based escrow automation, and real-time project telemetry, allowing investors—from institutions to retail—to participate in funding metros, solar, logistics, and water projects with full transparency.
+            </p>
+            <p className="text-sm text-white/60">
+              The software provides a unified workflow: issuers upload structured CAPEX and ESG data, admins verify milestones, investors track returns, and regulators can export compliance-ready ledgers—all in one secure, transparent interface.
             </p>
           </div>
+        </section>
+      </div>
 
-          <div className="grid md:grid-cols-4 gap-6">
-            {[
-              { value: "2,450", label: "Jobs Enabled", suffix: "+" },
-              { value: "127", label: "KM Roads Built", suffix: " KM" },
-              { value: "18,500", label: "Tons CO₂ Saved", suffix: " T" },
-              { value: "43", label: "Projects Funded", suffix: "" },
-            ].map((stat, i) => (
-              <Card key={i}>
-                <CardContent className="p-6 text-center">
-                  <p className="text-3xl font-bold text-primary mb-1">
-                    {stat.value}
-                    {stat.suffix}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+      {/* Brand marquee */}
+      <section className="py-8 border-y border-white/5 bg-[#030816]">
+        <div className="max-w-6xl mx-auto px-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/40 mb-4">Pilot collaborations</p>
+          <div className="flex flex-wrap gap-4 text-white/60 text-sm">
+            {marqueeBrands.map((logo) => (
+              <span key={logo} className="px-4 py-2 rounded-full border border-white/10 bg-white/5">
+                {logo}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Feature tiles */}
+      <section className="py-20 px-4 bg-[#050b19]">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50 mb-2">Platform fabric</p>
+              <h2 className="text-3xl md:text-4xl font-semibold">What makes InfraBondX different</h2>
+            </div>
+            <p className="text-white/60 max-w-xl">
+              Purpose-built for sovereign-grade infrastructure desks needing automation, transparency, and trusted retail participation.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {featureTiles.map((tile) => (
+              <Card key={tile.title} className="bg-white/5 border-white/10 h-full">
+                <CardContent className="p-6 space-y-4">
+                  <tile.icon className="w-6 h-6 text-[#38bdf8]" />
+                  <h3 className="text-xl font-semibold">{tile.title}</h3>
+                  <p className="text-sm text-white/70">{tile.description}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="mt-12 p-8 bg-primary rounded-xl text-white text-center">
-            <h3 className="text-2xl font-bold mb-4">Ready to Build the Future?</h3>
-            <p className="text-white/90 mb-6 max-w-2xl mx-auto">
-              Join thousands of retail investors participating in transparent, milestone-verified
-              infrastructure financing. Start with as little as ₹100.
-            </p>
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-white text-primary hover:bg-white/90"
-              onClick={() => onNavigate("role-select")}
-            >
-              Start Investing Now <ArrowRight className="w-4 h-4 ml-2" />
+      {/* Journey */}
+      <section className="py-20 px-4 bg-[#02060f]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50 mb-2">Journey</p>
+            <h2 className="text-3xl md:text-4xl font-semibold">From origination to payout in four accountable stages</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {journeySteps.map((step, index) => (
+              <Card key={step.stage} className="bg-gradient-to-br from-white/5 to-transparent border-white/10">
+                <CardContent className="p-6 space-y-3">
+                  <p className="text-sm text-white/60">{index + 1}. {step.stage}</p>
+                  <h3 className="text-xl font-semibold">{step.summary}</h3>
+                  <p className="text-white/70 text-sm">{step.detail}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Compliance + KPIs */}
+      <section className="py-20 px-4 bg-[#050b19]">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-12">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50 mb-3">Compliance stack</p>
+            <h2 className="text-3xl font-semibold mb-8">Controls embedded at every milestone</h2>
+            <div className="space-y-6">
+              {complianceLayers.map((layer) => (
+                <div key={layer.title} className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <layer.icon className="w-5 h-5 text-[#22d3ee]" />
+                    <p className="font-semibold">{layer.title}</p>
+                  </div>
+                  <ul className="text-sm text-white/70 space-y-2">
+                    {layer.bullets.map((item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee]" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="bg-white/5 border-white/10">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2 text-sm uppercase tracking-[0.3em] text-white/50">
+                  <BarChart2 className="w-4 h-4" />
+                  Platform KPIs
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {impactStats.map((metric) => (
+                    <div key={metric.label} className="rounded-2xl border border-white/10 p-4 text-center">
+                      <p className="text-2xl font-semibold">{metric.value}</p>
+                      <p className="text-xs text-white/60">{metric.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/5 border-white/10">
+              <CardContent className="p-6 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-white/60">
+                  <Globe2 className="w-4 h-4" />
+                  Impact corridor coverage
+                </div>
+                <p className="text-lg font-semibold">Transit • Energy • Logistics • Water</p>
+                <p className="text-sm text-white/70">
+                  Multi-sector exposure ensures diversified yield opportunities while maintaining ESG accountability.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-20 px-4 bg-[#010409]">
+        <div className="max-w-5xl mx-auto text-center space-y-6 border border-white/10 rounded-[32px] p-10 bg-gradient-to-b from-white/5 to-transparent">
+          <h2 className="text-3xl md:text-4xl font-semibold">Ready to open the next tranche?</h2>
+          <p className="text-white/70 text-lg">
+            Whether you are scaling metro corridors or underwriting climate logistics, InfraBondX provides the compliance, telemetry, and investor demand in one pane of glass.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button size="lg" className="bg-gradient-to-r from-[#22d3ee] to-[#818cf8] text-slate-900" onClick={() => onNavigate("role-select")}>
+              Start investing
+            </Button>
+            <Button size="lg" variant="outline" className="border-white/30 text-white" onClick={() => onNavigate("role-select")}>
+              Talk to our team
             </Button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#0f172a] text-white py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
-                <span className="font-semibold">InfraBondX</span>
+      <footer className="bg-[#00040c] text-white/70 py-12 px-4 border-t border-white/10">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-[#0f172a]" />
               </div>
-              <p className="text-sm text-white/70">
-                Democratizing infrastructure finance through tokenization and transparency.
-              </p>
+              <span className="font-semibold text-white">InfraBondX</span>
             </div>
-            <div>
-              <h4 className="font-semibold mb-3">Platform</h4>
-              <ul className="space-y-2 text-sm text-white/70">
-                <li>How It Works</li>
-                <li>Projects</li>
-                <li>For Issuers</li>
-                <li>Documentation</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-3">Legal</h4>
-              <ul className="space-y-2 text-sm text-white/70">
-                <li>Terms of Service</li>
-                <li>Privacy Policy</li>
-                <li>Risk Disclosure</li>
-                <li>Compliance</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-3">Disclaimer</h4>
-              <p className="text-xs text-white/70">
-                This is a hackathon MVP simulation. No real money or financial transactions are
-                involved. Tokens represent fractional ownership of regulated bonds, NOT
-                cryptocurrency.
-              </p>
-            </div>
+            <p className="text-sm">
+              Democratizing infrastructure finance through tokenization, compliance automation, and transparent telemetry.
+            </p>
           </div>
-          <div className="border-t border-white/10 pt-8 text-center text-sm text-white/70">
-            <p>© 2026 InfraBondX. Hackathon MVP Demo. Not meant for collecting PII or securing sensitive data.</p>
+          <div>
+            <h4 className="font-semibold text-white mb-3">Platform</h4>
+            <ul className="space-y-2 text-sm">
+              <li>Live marketplace</li>
+              <li>Issuer console</li>
+              <li>Admin command</li>
+              <li>Impact analytics</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-white mb-3">Compliance</h4>
+            <ul className="space-y-2 text-sm">
+              <li>Risk disclosure</li>
+              <li>Privacy & security</li>
+              <li>Escrow policy</li>
+              <li>Responsible AI</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-white mb-3">Disclaimer</h4>
+            <p className="text-xs">
+              Hackathon MVP for demonstration only. No real financial services provided. Tokens simulate fractional ownership of regulated infrastructure bonds.
+            </p>
           </div>
         </div>
+        <p className="mt-10 text-center text-xs">© 2026 InfraBondX • National Infra Innovation Challenge demo.</p>
       </footer>
     </div>
   );

@@ -124,6 +124,10 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
         )}
         {filteredProjects.map((project) => {
           const fundingProgress = getFundingProgress(project);
+          // Calculate riskScore in real time: higher ROI and lower tenure = higher risk, more funding progress = lower risk
+          // Example formula: risk = 40 + (roi * 2) - (fundingProgress / 5) + (10 - Math.min(10, tenure))
+          let riskScore = 40 + (project.roi * 2) - (fundingProgress / 5) + (10 - Math.min(10, project.tenure));
+          riskScore = Math.max(5, Math.min(95, Math.round(riskScore)));
           return (
             <Card
               key={project.id}
@@ -187,7 +191,7 @@ export function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                   </div>
                 </div>
 
-                <RiskScoreMeter score={project.riskScore} showLabel={false} />
+                <RiskScoreMeter score={riskScore} showLabel={false} />
 
                 <div className="flex gap-2 pt-2">
                   <Button className="flex-1" onClick={() => onNavigate(`project-${project.id}`)}>

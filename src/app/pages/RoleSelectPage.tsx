@@ -60,34 +60,37 @@ export function RoleSelectPage({ onSelectRole, onBack }: RoleSelectPageProps) {
         </Button>
 
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">Choose Your Role</h1>
-          <p className="text-xl text-white/90">
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#22d3ee] via-[#a855f7] to-[#f472b6] mb-4 drop-shadow-lg">
+            Choose Your Role
+          </h1>
+          <p className="text-xl text-white/80">
             Select how you want to interact with InfraBondX
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-8">
           {roles.map((role) => (
             <Card
               key={role.id}
-              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-2 hover:border-primary"
+              className="cursor-pointer transition-all hover:scale-105 border-0 shadow-xl bg-white/10 backdrop-blur-lg ring-1 ring-white/20 hover:ring-2 hover:ring-[#22d3ee] group relative overflow-hidden"
               onClick={() => onSelectRole(role.id)}
             >
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <role.icon className="w-8 h-8 text-primary" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#22d3ee]/10 via-[#a855f7]/10 to-[#f472b6]/10 opacity-80 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
+              <CardContent className="relative p-8 text-center z-10">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#22d3ee]/30 via-[#a855f7]/20 to-[#f472b6]/20 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <role.icon className="w-10 h-10 text-[#22d3ee] group-hover:text-[#a855f7] transition-colors duration-300" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{role.title}</h3>
-                <p className="text-sm text-muted-foreground mb-6">{role.description}</p>
-                <ul className="text-left space-y-2 mb-6">
+                <h3 className="text-2xl font-bold mb-2 text-white drop-shadow-sm">{role.title}</h3>
+                <p className="text-base text-white/80 mb-6">{role.description}</p>
+                <ul className="text-left space-y-2 mb-8">
                   {role.features.map((feature, i) => (
-                    <li key={i} className="text-sm flex items-start gap-2">
+                    <li key={i} className="text-sm flex items-start gap-2 text-white/80">
                       <span className="text-[#10b981] mt-0.5">✓</span>
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <Button className="w-full">
+                <Button className="w-full bg-gradient-to-r from-[#22d3ee] to-[#a855f7] text-white font-semibold shadow-md group-hover:from-[#a855f7] group-hover:to-[#22d3ee] transition-all">
                   Continue as {role.title.split(" / ")[0]}
                 </Button>
               </CardContent>
@@ -96,8 +99,8 @@ export function RoleSelectPage({ onSelectRole, onBack }: RoleSelectPageProps) {
         </div>
 
         <div className="mt-8 text-center">
-          <p className="text-sm text-white/70">
-            All roles use mock authentication for this hackathon demo
+          <p className="text-sm text-white/60 italic">
+            All roles use mock authentication for this demo
           </p>
         </div>
       </div>

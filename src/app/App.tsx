@@ -36,7 +36,12 @@ function AppContent() {
       return;
     }
     if (role === "investor") {
-      setCurrentPage("kyc");
+      // If user has already completed KYC, skip onboarding
+      if (user && user.kycCompleted) {
+        setCurrentPage("investor-dashboard");
+      } else {
+        setCurrentPage("kyc");
+      }
       return;
     }
     if (role === "issuer") {

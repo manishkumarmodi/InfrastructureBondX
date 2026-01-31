@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Project } from "@/types/project";
-import type { Milestone, MilestoneProof } from "@/app/components/MilestoneStepper";
+import type { Milestone, MilestoneProof, MilestoneProofStatus } from "@/app/components/MilestoneStepper";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "./AuthContext";
 
@@ -553,8 +553,8 @@ export function InvestorDataProvider({ children }: { children: ReactNode }) {
                 milestone.id === milestoneId
                   ? {
                       ...milestone,
-                      status: decision === "approved" ? "completed" : "in-progress",
-                      proofStatus: decision === "approved" ? "approved" : "rejected",
+                      status: (decision === "approved" ? "completed" : "in-progress") as "pending" | "completed" | "in-progress",
+                      proofStatus: (decision === "approved" ? "approved" : "rejected") as MilestoneProofStatus,
                       proofNotes: notes ?? milestone.proofNotes,
                       lastProofAt: new Date().toISOString(),
                     }

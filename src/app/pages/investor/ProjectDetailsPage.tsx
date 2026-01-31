@@ -42,6 +42,11 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
   const lockedEscrow = Math.max(totalEscrow - releasedEscrow, 0);
   const investorCount = project.tokenPrice > 0 ? Math.round(project.fundingRaised / project.tokenPrice) : 0;
 
+  // Calculate riskScore in real time: higher ROI and lower tenure = higher risk, more funding progress = lower risk
+  // Example formula: risk = 40 + (roi * 2) - (fundingProgress / 5) + (10 - Math.min(10, tenure))
+  let riskScore = 40 + (project.roi * 2) - (fundingProgress / 5) + (10 - Math.min(10, project.tenure));
+  riskScore = Math.max(5, Math.min(95, Math.round(riskScore)));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -209,7 +214,7 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
               <CardTitle>Risk Assessment</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <RiskScoreMeter score={project.riskScore} />
+              <RiskScoreMeter score={riskScore} />
               <p className="text-sm text-muted-foreground border-t pt-4">
                 Store your own diligence checklist, credit ratings, or third-party analytics here to
                 explain how this score was derived.
