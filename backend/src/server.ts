@@ -4,9 +4,9 @@ import { connectDatabase } from "./config/db";
 
 async function bootstrap() {
   await connectDatabase();
-  app.listen(env.PORT, () => {
-    console.log(`InfraBondX API listening on port ${env.PORT}`);
-  });
+  app.listen(env.PORT, "0.0.0.0", () => {
+  console.log(`InfraBondX API listening on port ${env.PORT}`);
+});
 }
 
 bootstrap().catch((error) => {
