@@ -13,6 +13,10 @@ interface KYCOnboardingProps {
 export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
   const [step, setStep] = useState(1);
   const [idProof, setIdProof] = useState<File | null>(null);
+  const [pan, setPan] = useState("");
+  const [aadhaar, setAadhaar] = useState("");
+  const [panError, setPanError] = useState("");
+  const [aadhaarError, setAadhaarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { completeKYC } = useAuth();
 
@@ -38,6 +42,33 @@ export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
       fileInputRef.current.value = "";
     }
   };
+
+  // PAN: 5 uppercase letters, 4 digits, 1 uppercase letter
+  const validatePan = (value: string) => {
+    return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value.trim());
+  };
+  // Aadhaar: 12 digits, allow spaces
+  const validateAadhaar = (value: string) => {
+    return /^\d{4}\s?\d{4}\s?\d{4}$/.test(value.trim());
+  };
+
+  const handlePanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    setPan(value);
+    setPanError(value && !validatePan(value) ? "Invalid PAN format" : "");
+  };
+  const handleAadhaarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9 ]/g, "");
+    setAadhaar(value);
+    setAadhaarError(value && !validateAadhaar(value) ? "Invalid Aadhaar format" : "");
+  };
+
+  const canContinueStep2 =
+    !!idProof &&
+    validatePan(pan) &&
+    validateAadhaar(aadhaar) &&
+    !panError &&
+    !aadhaarError;
 
   return (
     <div className="min-h-screen bg-muted flex items-center justify-center p-4">
@@ -123,11 +154,24 @@ export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
               <>
                 <div>
                   <label className="text-sm mb-2 block">PAN Card Number</label>
-                  <Input placeholder="ABCDE1234F" />
+                  <Input
+                    placeholder="ABCDE1234F"
+                    value={pan}
+                    maxLength={10}
+                    onChange={handlePanChange}
+                    autoCapitalize="characters"
+                  />
+                  {panError && <p className="text-xs text-red-500 mt-1">{panError}</p>}
                 </div>
                 <div>
                   <label className="text-sm mb-2 block">Aadhaar Number</label>
-                  <Input placeholder="XXXX XXXX XXXX" />
+                  <Input
+                    placeholder="XXXX XXXX XXXX"
+                    value={aadhaar}
+                    maxLength={14}
+                    onChange={handleAadhaarChange}
+                  />
+                  {aadhaarError && <p className="text-xs text-red-500 mt-1">{aadhaarError}</p>}
                 </div>
                 <div>
                   <label className="text-sm mb-2 block">Upload ID Proof</label>
@@ -228,7 +272,7 @@ export function KYCOnboarding({ onComplete }: KYCOnboardingProps) {
                 <Button
                   onClick={() => setStep(step + 1)}
                   className="flex-1"
-                  disabled={step === 2 && !idProof}
+                  disabled={step === 2 && !canContinueStep2}
                 >
                   Continue
                 </Button>
